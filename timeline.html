@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kế Hoạch Phát Triển Website Thời Tiết</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as an interactive dashboard with four main views controlled by tabs: 1. An Interactive Timeline to explore tasks week-by-week. 2. A Work Breakdown view that groups tasks by function (Planning, UI, Features, etc.) to offer a different perspective. 3. A Charts & Stats section to visualize effort distribution and project momentum. 4. A Key Considerations section for important technical notes. This structure transforms the linear report into a multi-faceted analytical tool, allowing users to switch contexts easily and gain deeper insights into the project plan beyond a simple chronological list. -->
+    <!-- Visualization & Content Choices: 
+        - Project Overview (HTML/Tailwind): Goal: Inform. Interaction: Static. Justification: Provides immediate context.
+        - Interactive Timeline (HTML/JS/Tailwind): Goal: Organize/Explore. Interaction: Click to expand/collapse weeks. Justification: Makes a long timeline manageable and focused.
+        - Effort Distribution (Chart.js Donut): Goal: Compare. Interaction: Hover tooltips. Justification: Visually summarizes resource allocation.
+        - Deliverables Per Week (Chart.js Bar): Goal: Show Change/Progress. Interaction: Hover tooltips. Justification: Visualizes project productivity and momentum over time.
+        - Key Considerations (HTML/Tailwind): Goal: Inform. Interaction: Static. Justification: Highlights critical advice in a clean, digestible format.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #fdfcfb;
+            color: #3d3d3d;
+        }
+        .tab-active {
+            border-color: #f97316;
+            color: #f97316;
+            font-weight: 600;
+        }
+        .tab-inactive {
+            border-color: transparent;
+            color: #6b7280;
+        }
+        .task-item::before {
+            content: '✓';
+            color: #10b981;
+            margin-right: 0.75rem;
+            font-weight: 700;
+        }
+        .week-accordion-header.active {
+            background-color: #fff7ed;
+        }
+        .week-accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto px-4 py-8 md:py-12">
+
+        <header class="text-center mb-10 md:mb-12">
+            <h1 class="text-3xl md:text-4xl font-bold text-stone-800 mb-2">Kế Hoạch Phát Triển Website Thời Tiết</h1>
+            <p class="text-lg text-stone-600">Một kế hoạch chi tiết trong 6 tuần để xây dựng một ứng dụng thời tiết bằng ReactJS.</p>
+            <div class="mt-4 flex justify-center items-center space-x-4 text-sm">
+                <span class="bg-orange-100 text-orange-800 font-medium px-3 py-1 rounded-full">6 Tuần</span>
+                <span class="bg-blue-100 text-blue-800 font-medium px-3 py-1 rounded-full">ReactJS</span>
+                <span class="bg-green-100 text-green-800 font-medium px-3 py-1 rounded-full">Full-time</span>
+            </div>
+        </header>
+
+        <div class="w-full max-w-4xl mx-auto">
+            <div class="border-b border-stone-200 mb-8">
+                <nav class="-mb-px flex justify-center space-x-2 sm:space-x-8" id="main-tabs">
+                    <button data-tab="timeline" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base tab-active">Dòng Thời Gian</button>
+                    <button data-tab="breakdown" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base tab-inactive">Phân Rã Công Việc</button>
+                    <button data-tab="charts" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base tab-inactive">Biểu Đồ</button>
+                    <button data-tab="notes" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm sm:text-base tab-inactive">Lưu Ý</button>
+                </nav>
+            </div>
+
+            <div id="tab-content">
+                <!-- Timeline View -->
+                <div id="timeline-content" class="tab-pane">
+                    <div class="text-center mb-8">
+                         <h2 class="text-2xl font-bold text-stone-800">Dòng Thời Gian Tương Tác</h2>
+                         <p class="mt-2 text-stone-600">Nhấp vào mỗi tuần để xem chi tiết mục tiêu và các công việc chính.</p>
+                    </div>
+                    <div id="timeline-accordion" class="space-y-4"></div>
+                </div>
+
+                <!-- Work Breakdown View -->
+                <div id="breakdown-content" class="tab-pane hidden">
+                    <div class="text-center mb-8">
+                         <h2 class="text-2xl font-bold text-stone-800">Phân Rã Công Việc Theo Chức Năng</h2>
+                         <p class="mt-2 text-stone-600">Xem danh sách công việc được nhóm theo từng giai đoạn phát triển chính.</p>
+                    </div>
+                    <div id="breakdown-container" class="space-y-6"></div>
+                </div>
+
+                <!-- Charts View -->
+                <div id="charts-content" class="tab-pane hidden">
+                    <div class="text-center mb-8">
+                         <h2 class="text-2xl font-bold text-stone-800">Phân Tích & Thống Kê Dự Án</h2>
+                         <p class="mt-2 text-stone-600">Biểu đồ trực quan hóa sự phân bổ nỗ lực và tiến độ của dự án.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        <div class="bg-white p-6 rounded-xl shadow-md shadow-stone-100">
+                            <h3 class="text-lg font-semibold text-center mb-4 text-stone-700">Phân Bổ Nỗ Lực Theo Giai Đoạn</h3>
+                            <div class="chart-container h-64 md:h-72 max-w-sm mx-auto">
+                                <canvas id="effortChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="bg-white p-6 rounded-xl shadow-md shadow-stone-100">
+                            <h3 class="text-lg font-semibold text-center mb-4 text-stone-700">Số Lượng Giao Phẩm Mỗi Tuần</h3>
+                             <div class="chart-container h-64 md:h-72 max-w-md mx-auto">
+                                <canvas id="deliverablesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Notes View -->
+                <div id="notes-content" class="tab-pane hidden">
+                    <div class="text-center mb-8">
+                         <h2 class="text-2xl font-bold text-stone-800">Những Lưu Ý Kỹ Thuật Quan Trọng</h2>
+                         <p class="mt-2 text-stone-600">Các khuyến nghị và yếu tố cần cân nhắc để đảm bảo dự án thành công.</p>
+                    </div>
+                    <div id="notes-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const timelineData = [
+            {
+                week: 1,
+                title: "Lên Kế Hoạch & Thiết Lập Cơ Bản",
+                goal: "Xác định phạm vi dự án, lựa chọn công nghệ chính và thiết lập môi trường phát triển ban đầu.",
+                tasks: [
+                    "Phân tích tính năng cốt lõi của AccuWeather.",
+                    "Chọn API Thời tiết phù hợp.",
+                    "Thiết kế Wireframe/Mockup cơ bản.",
+                    "Lên danh sách các Components React cần thiết.",
+                    "Khởi tạo dự án ReactJS với Vite/CRA.",
+                    "Cài đặt các thư viện (axios, tailwindcss).",
+                    "Thực hiện cuộc gọi API đầu tiên để kiểm tra.",
+                    "Xây dựng cấu trúc thư mục dự án."
+                ]
+            },
+            {
+                week: 2,
+                title: "Xây Dựng Giao Diện Cơ Bản & Hiển Thị Dữ Liệu",
+                goal: "Xây dựng phần UI chính và hiển thị dữ liệu thời tiết cơ bản.",
+                tasks: [
+                    "Phát triển component `SearchBar`.",
+                    "Tích hợp tính năng gợi ý/autocomplete cho tìm kiếm.",
+                    "Xử lý sự kiện khi người dùng chọn địa điểm.",
+                    "Xây dựng component `CurrentWeatherCard`.",
+                    "Sử dụng React State để quản lý dữ liệu.",
+                    "Kết nối và hiển thị động dữ liệu từ API."
+                ]
+            },
+            {
+                week: 3,
+                title: "Phát Triển Tính Năng Dự Báo Chi Tiết",
+                goal: "Thêm các module dự báo thời tiết theo giờ và theo ngày.",
+                tasks: [
+                    "Xây dựng component `HourlyForecast`.",
+                    "Render danh sách dự báo theo giờ từ API.",
+                    "Đảm bảo giao diện cuộn ngang cho dự báo giờ.",
+                    "Xây dựng component `DailyForecast`.",
+                    "Render danh sách dự báo 5-7 ngày tới."
+                ]
+            },
+            {
+                week: 4,
+                title: "Chi Tiết Thông Tin & Cải Thiện Trải Nghiệm",
+                goal: "Bổ sung thông tin chi tiết và xử lý các trạng thái tải, lỗi để nâng cao trải nghiệm người dùng.",
+                tasks: [
+                    "Xây dựng component `WeatherDetails` (độ ẩm, gió, UV...).",
+                    "Tích hợp dữ liệu chi tiết từ API.",
+                    "Thêm loading spinner/placeholder khi tải dữ liệu.",
+                    "Triển khai xử lý lỗi (không tìm thấy, lỗi mạng...).",
+                    "Sử dụng thư viện thông báo (toast) cho người dùng."
+                ]
+            },
+            {
+                week: 5,
+                title: "Tính Năng Bổ Sung & Tối Ưu Hóa",
+                goal: "Thêm các tính năng phụ trợ và bắt đầu tối ưu hóa giao diện.",
+                tasks: [
+                    "Sử dụng `localStorage` để lưu địa điểm yêu thích.",
+                    "Thêm chức năng thêm/xóa địa điểm yêu thích.",
+                    "Hiển thị danh sách địa điểm đã lưu.",
+                    "Đảm bảo giao diện responsive trên mọi thiết bị.",
+                    "Tinh chỉnh CSS/Styling để giao diện đẹp hơn."
+                ]
+            },
+            {
+                week: 6,
+                title: "Hoàn Thiện, Kiểm Thử & Triển Khai",
+                goal: "Đảm bảo ứng dụng hoạt động ổn định, không lỗi và sẵn sàng để public.",
+                tasks: [
+                    "Kiểm thử toàn diện các tính năng trên các trình duyệt.",
+                    "Tìm và sửa các lỗi còn tồn đọng.",
+                    "Tối ưu hóa hiệu suất (React.memo, tối ưu API calls).",
+                    "Chuẩn bị dự án để triển khai (build).",
+                    "Triển khai ứng dụng lên Vercel/Netlify.",
+                    "Viết tài liệu README.md cho dự án."
+                ]
+            }
+        ];
+
+        const breakdownData = {
+            "Lập Kế Hoạch & Thiết Lập": [
+                "Phân tích tính năng cốt lõi của AccuWeather.", "Chọn API Thời tiết phù hợp.", "Thiết kế Wireframe/Mockup cơ bản.", "Lên danh sách các Components React cần thiết.", "Khởi tạo dự án ReactJS với Vite/CRA.", "Cài đặt các thư viện (axios, tailwindcss).", "Thực hiện cuộc gọi API đầu tiên để kiểm tra.", "Xây dựng cấu trúc thư mục dự án."
+            ],
+            "Phát Triển Giao Diện (UI)": [
+                "Phát triển component `SearchBar`.", "Xây dựng component `CurrentWeatherCard`.", "Xây dựng component `HourlyForecast`.", "Xây dựng component `DailyForecast`.", "Xây dựng component `WeatherDetails` (độ ẩm, gió, UV...).", "Tinh chỉnh CSS/Styling để giao diện đẹp hơn."
+            ],
+            "Phát Triển Tính Năng & Logic": [
+                "Tích hợp tính năng gợi ý/autocomplete cho tìm kiếm.", "Xử lý sự kiện khi người dùng chọn địa điểm.", "Sử dụng React State để quản lý dữ liệu.", "Kết nối và hiển thị động dữ liệu từ API.", "Render danh sách dự báo theo giờ và ngày.", "Sử dụng `localStorage` để lưu địa điểm yêu thích.", "Thêm chức năng thêm/xóa địa điểm yêu thích."
+            ],
+            "Trải Nghiệm Người Dùng & Tối Ưu Hóa": [
+                "Thêm loading spinner/placeholder khi tải dữ liệu.", "Triển khai xử lý lỗi (không tìm thấy, lỗi mạng...).", "Sử dụng thư viện thông báo (toast) cho người dùng.", "Đảm bảo giao diện responsive trên mọi thiết bị.", "Tối ưu hóa hiệu suất (React.memo, tối ưu API calls)."
+            ],
+            "Kiểm Thử & Triển Khai": [
+                "Kiểm thử toàn diện các tính năng trên các trình duyệt.", "Tìm và sửa các lỗi còn tồn đọng.", "Chuẩn bị dự án để triển khai (build).", "Triển khai ứng dụng lên Vercel/Netlify.", "Viết tài liệu README.md cho dự án."
+            ]
+        };
+
+        const notesData = [
+            { 
+                icon: '🔑', 
+                title: 'Bảo Mật API Key', 
+                text: 'Luôn sử dụng biến môi trường (.env) để lưu trữ API key, không bao giờ để lộ trong mã nguồn phía client.' 
+            },
+            { 
+                icon: '🔄', 
+                title: 'Quản Lý Trạng Thái', 
+                text: 'Với ứng dụng phức tạp hơn, cân nhắc sử dụng Context API hoặc Zustand/Redux để quản lý trạng thái hiệu quả.' 
+            },
+            { 
+                icon: '🌡️', 
+                title: 'Đơn Vị Đo Lường', 
+                text: 'Cần có chức năng cho phép người dùng chuyển đổi giữa các đơn vị đo lường khác nhau như độ C và độ F.' 
+            },
+            { 
+                icon: '🚀', 
+                title: 'Tính Năng Nâng Cao', 
+                text: 'Nếu có thời gian, có thể phát triển thêm các tính năng như bản đồ radar, cảnh báo thời tiết khắc nghiệt, hoặc hỗ trợ đa ngôn ngữ.' 
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabs = document.querySelectorAll('[data-tab]');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            const timelineAccordion = document.getElementById('timeline-accordion');
+            const breakdownContainer = document.getElementById('breakdown-container');
+            const notesContainer = document.getElementById('notes-container');
+
+            // --- Tab navigation ---
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(item => {
+                        item.classList.remove('tab-active');
+                        item.classList.add('tab-inactive');
+                    });
+                    tab.classList.remove('tab-inactive');
+                    tab.classList.add('tab-active');
+
+                    const target = tab.getAttribute('data-tab');
+                    tabPanes.forEach(pane => {
+                        pane.classList.add('hidden');
+                        if (pane.id === `${target}-content`) {
+                            pane.classList.remove('hidden');
+                        }
+                    });
+                });
+            });
+            
+            // --- Render Timeline Accordion ---
+            timelineData.forEach(week => {
+                const weekDiv = document.createElement('div');
+                weekDiv.className = 'border border-stone-200 rounded-lg bg-white overflow-hidden shadow-sm shadow-stone-100';
+                weekDiv.innerHTML = `
+                    <div class="week-accordion-header cursor-pointer p-5 flex justify-between items-center transition-colors duration-300 hover:bg-stone-50">
+                        <div>
+                            <p class="font-semibold text-lg text-stone-800">Tuần ${week.week}: ${week.title}</p>
+                            <p class="text-sm text-stone-500 mt-1">${week.goal}</p>
+                        </div>
+                        <span class="text-2xl text-stone-400 transition-transform duration-300 transform">&#x25BC;</span>
+                    </div>
+                    <div class="week-accordion-content">
+                        <div class="p-5 border-t border-stone-200">
+                            <h4 class="font-semibold mb-3 text-stone-700">Công việc chính:</h4>
+                            <ul class="space-y-2 text-stone-600">
+                                ${week.tasks.map(task => `<li class="task-item">${task}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                timelineAccordion.appendChild(weekDiv);
+            });
+
+            document.querySelectorAll('.week-accordion-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const content = header.nextElementSibling;
+                    const isActive = header.classList.contains('active');
+
+                    // Close all others
+                    document.querySelectorAll('.week-accordion-header').forEach(h => {
+                        h.classList.remove('active');
+                        h.nextElementSibling.style.maxHeight = null;
+                        h.querySelector('span').style.transform = 'rotate(0deg)';
+                    });
+
+                    if (!isActive) {
+                        header.classList.add('active');
+                        content.style.maxHeight = content.scrollHeight + "px";
+                        header.querySelector('span').style.transform = 'rotate(180deg)';
+                    }
+                });
+            });
+            
+            // --- Render Breakdown View ---
+            for(const [category, tasks] of Object.entries(breakdownData)) {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'bg-white p-6 rounded-xl shadow-md shadow-stone-100';
+                let taskItems = tasks.map(task => `<li class="task-item">${task}</li>`).join('');
+                categoryDiv.innerHTML = `
+                    <h3 class="text-xl font-bold text-orange-600 mb-4">${category}</h3>
+                    <ul class="space-y-2 text-stone-600">
+                        ${taskItems}
+                    </ul>
+                `;
+                breakdownContainer.appendChild(categoryDiv);
+            }
+
+            // --- Render Notes View ---
+            notesData.forEach(note => {
+                const noteCard = document.createElement('div');
+                noteCard.className = 'bg-white p-6 rounded-xl shadow-md shadow-stone-100 flex items-start space-x-4';
+                noteCard.innerHTML = `
+                    <div class="text-3xl">${note.icon}</div>
+                    <div>
+                        <h4 class="font-bold text-lg text-stone-800">${note.title}</h4>
+                        <p class="text-stone-600 mt-1">${note.text}</p>
+                    </div>
+                `;
+                notesContainer.appendChild(noteCard);
+            });
+
+
+            // --- Chart.js Initialization ---
+            const effortCtx = document.getElementById('effortChart').getContext('2d');
+            new Chart(effortCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Lập Kế Hoạch', 'Phát Triển UI', 'Phát Triển Logic', 'Tối Ưu Hóa & UX', 'Kiểm Thử & Triển Khai'],
+                    datasets: [{
+                        label: 'Phân Bổ Nỗ Lực',
+                        data: [15, 25, 30, 15, 15],
+                        backgroundColor: [
+                            '#fb923c', // orange-400
+                            '#60a5fa', // blue-400
+                            '#34d399', // emerald-400
+                            '#a78bfa', // violet-400
+                            '#facc15'  // yellow-400
+                        ],
+                        borderColor: '#fdfcfb',
+                        borderWidth: 4,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    family: "'Be Vietnam Pro', sans-serif"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${context.raw}%`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+
+            const deliverablesCtx = document.getElementById('deliverablesChart').getContext('2d');
+            new Chart(deliverablesCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Tuần 1', 'Tuần 2', 'Tuần 3', 'Tuần 4', 'Tuần 5', 'Tuần 6'],
+                    datasets: [{
+                        label: 'Số Lượng Giao Phẩm Chính',
+                        data: [2, 3, 2, 3, 2, 3],
+                        backgroundColor: '#fdba74', // orange-300
+                        borderColor: '#f97316', // orange-500
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        hoverBackgroundColor: '#f97316'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            grid: {
+                                color: '#f3f4f6'
+                            }
+                        },
+                        x: {
+                             grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
